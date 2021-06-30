@@ -1,0 +1,48 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "existingVnetRg": {
+            "value": "myRG"
+        },
+        "existingVnetName": {
+            "value": "myVnet"
+        },
+        "existingSubnetName": {
+            "value": "subnet2"
+        },
+        "availabilitySetName": {
+            "value": "myas"
+        },
+        "vmNamePrefix": {
+            "value": "myfs-c1n"
+        },
+        "vmCount": {
+            "value": 2
+        },
+        "adminUsername": {
+            "value": "myadmin"
+        },
+        "adminPassword": {
+            "value": ""
+        },
+        "dataDiskCount": {
+            "value": 2
+        },
+        "dataDiskNamePrefix": {
+            "value": "cluster1"
+        },
+        "dataDiskSizeGB": {
+            "value": 1024
+        },
+        "vmSize": {
+            "value": "Standard_B2ms"
+        },
+        "loadBalancerFrontendName": {
+            "value": "mynatt"
+        },
+        "loadBalancerFrontendIPAddress": {
+            "value": "10.10.10.25"
+        }
+    }
+}

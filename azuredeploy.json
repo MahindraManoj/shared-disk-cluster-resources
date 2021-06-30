@@ -1,0 +1,248 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "existingVnetRg": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the resource group where the virtual network is deployed"
+            }
+        },
+        "existingVnetName": {
+            "type": "string",
+            "metadata": {
+                "description": "Vnet where the VMs will be deployed"
+            }
+        },
+        "existingSubnetName": {
+            "type": "string",
+            "metadata": {
+                "description": "Subnet where the VM will be deployed"
+            }
+        },
+        "availabilitySetName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the availability set"
+            }
+        },
+        "vmNamePrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Name that will be used as the prefix for the vm resources"
+            }
+        },
+        "vmCount": {
+            "type": "int",
+            "metadata": {
+                "description": "Number of VMs to be deployed for this deployment"
+            }
+        },
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Admin username for the VM"
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Admin password for the VM"
+            }
+        },
+        "dataDiskCount": {
+            "type": "int",
+            "minValue": 1,
+            "metadata": {
+                "description": "Number of dataDisks to be attached per vm"
+            }
+        },
+        "dataDiskNamePrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Data disk name prefix. This will also be used as load balancer name prefix."
+            }
+        },
+        "dataDiskSizeGB": {
+            "type": "int",
+            "metadata": {
+                "description": "Size of the data disk that will be attached to the VMs"
+            }
+        },
+        "vmSize": {
+            "type": "string",
+            "metadata": {
+                "description": "Size of the VM"
+            }
+        },
+        "loadBalancerFrontendName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the frontend configuration of the load balancer"
+            }
+        },
+        "loadBalancerFrontendIPAddress": {
+            "type": "string",
+            "metadata": {
+                "description": "IP address of the load balancer front end"
+            }
+        }
+    },
+    "variables": {
+        "vnetID": "[resourceId(parameters('existingVnetRg'), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName'))]",
+        "subnetID": "[concat(variables('vnetID'),'/subnets/', parameters('existingSubnetName'))]",
+        "loadBalancerName": "[concat(parameters('dataDiskNamePrefix'), '_lb')]",
+        "backendPoolName": "backend-pool"
+    },
+    "resources": [
+        {
+            "name": "[parameters('availabilitySetName')]",
+            "type": "Microsoft.Compute/availabilitySets",
+            "apiVersion": "2020-12-01",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "platformUpdateDomainCount": 5,
+                "platformFaultDomainCount": 3
+            },
+            "sku": {
+                "name": "aligned"
+            }
+        },
+        {
+            "name": "loadBalancerTemplate",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                "relativePath": "linkedTemplates/loadBalancer/lbdeploy.json"
+                },
+                "parameters": {
+                    "subnetId": {
+                        "value": "[variables('subnetID')]"
+                    },
+                    "loadBalancerName": {
+                        "value": "[variables('loadBalancerName')]"
+                    },
+                    "frontendName": {
+                        "value": "[parameters('loadBalancerFrontendName')]"
+                    },
+                    "frontendIPAddress": {
+                        "value": "[parameters('LoadBalancerFrontendIpAddress')]"
+                    },
+                    "backendPoolName": {
+                        "value": "[variables('backendPoolName')]"
+                    }
+                }
+            }    
+        },   
+        {
+            "name": "[concat(parameters('vmNamePrefix'), copyIndex(1), '-vm', '_nic')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-11-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'loadBalancerTemplate')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[variables('subnetID')]"
+                            },
+                            "loadBalancerBackendAddressPools": [
+                                {
+                                    "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', variables('loadBalancerName'), variables('backendPoolName'))]"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "copy": {
+                "name": "nicCopy",
+                "count": "[parameters('vmCount')]"
+            }
+        },
+        {
+            "copy": {
+                "name": "sharedDiskCopy",
+                "count": "[parameters('dataDiskCount')]"
+            },
+            "name": "[concat(parameters('dataDiskNamePrefix'), '_DataDisk_', copyIndex(0))]",
+            "type": "Microsoft.Compute/disks",
+            "apiVersion": "2020-09-30",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Premium_LRS"
+            },
+            "properties": {
+                "creationData": {
+                    "createOption": "Empty"
+                },
+                "diskSizeGB": "[parameters('dataDiskSizeGB')]",
+                "maxShares": 3
+            }
+        },
+        {
+            "name": "[concat('vmTemplate', copyIndex(1))]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "copy": {
+                "name": "vmCopy",
+                "count": "[parameters('vmCount')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySetName'))]",
+                "nicCopy",
+                "sharedDiskCopy"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "linkedTemplates/virtualMachine/vmdeploy.json"
+                },
+                "parameters": {
+                    "vmSize": {
+                        "value": "[parameters('vmSize')]"
+                    },
+                    "vmCount": {
+                        "value": "[parameters('vmCount')]"
+                    },
+                    "vmName": {
+                        "value": "[concat(parameters('vmNamePrefix'), copyIndex(1), '-vm')]"
+                    },
+                    "adminUsername": {
+                        "value": "[parameters('adminUsername')]"
+                    },
+                    "adminPassword": {
+                        "value": "[parameters('adminPassword')]"
+                    },
+                    "dataDiskCount": {
+                        "value": "[parameters('dataDiskCount')]"
+                    },
+                    "availabilitySetName": {
+                        "value": "[parameters('availabilitySetName')]"
+                    },
+                    "dataDiskNamePrefix": {
+                        "value": "[parameters('dataDiskNamePrefix')]"
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "resourceID": {
+            "type": "array",
+            "copy": {
+                "count": "[parameters('vmCount')]",
+                "input": {
+                    "value": "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('vmNamePrefix'), copyIndex(1), '-vm'))]"
+                }
+            }
+        }
+    }
+}
