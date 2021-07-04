@@ -95,7 +95,7 @@
                                 "createOption": "Attach",
                                 "caching": "None",
                                 "managedDisk": {
-                                    "id": "[resourceId('Microsoft.Compute/Disks', concat(parameters('dataDiskNamePrefix'), '_DataDisk' , copyIndex('dataDisks')))]"
+                                    "id": "[resourceId('Microsoft.Compute/Disks', concat(parameters('dataDiskNamePrefix'), '_DataDisk_' , copyIndex('dataDisks')))]"
                                 }
                             }
                         }
