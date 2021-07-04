@@ -91,8 +91,9 @@
     "variables": {
         "vnetID": "[resourceId(parameters('existingVnetRg'), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName'))]",
         "subnetID": "[concat(variables('vnetID'),'/subnets/', parameters('existingSubnetName'))]",
-        "lbTemplateUri": "[uri(deployment().properties.templateLink.uri, 'linkedTemplates/loadbalancer/lbdeploy.json')]",
-        "vmTemplateUri": "[uri(deployment().properties.templateLink.uri, 'linkedTemplates/virtualmachine/vmdeploy.json')]",
+        "_artifactsLocation": "https://raw.githubusercontent.com/MahindraManoj/shared-disk-cluster-resources/main/"
+        "lbTemplateUri": "[concat(variables('_artifactsLocation'), 'linkedTemplates/loadBalancer/lbdeploy.json')]",
+        "vmTemplateUri": "[concat(variables('_artifactsLocation'), 'linkedTemplates/virtualMachine/vmdeploy.json')]",
         "loadBalancerName": "[concat(parameters('dataDiskNamePrefix'), '_lb')]",
         "backendPoolName": "backend-pool"
     },
