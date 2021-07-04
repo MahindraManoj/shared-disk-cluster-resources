@@ -91,6 +91,8 @@
     "variables": {
         "vnetID": "[resourceId(parameters('existingVnetRg'), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName'))]",
         "subnetID": "[concat(variables('vnetID'),'/subnets/', parameters('existingSubnetName'))]",
+        "lbTemplateUri": "[uri(deployment().properties.templateLink.uri, 'linkedTemplates/loadbalancer/lbdeploy.json')]",
+        "vmTemplateUri": "[uri(deployment().properties.templateLink.uri, 'linkedTemplates/virtualmachine/vmdeploy.json')]",
         "loadBalancerName": "[concat(parameters('dataDiskNamePrefix'), '_lb')]",
         "backendPoolName": "backend-pool"
     },
@@ -115,7 +117,7 @@
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                "relativePath": "linkedTemplates/loadBalancer/lbdeploy.json"
+                    "uri": "[variables('lbTemplateUri')]"
                 },
                 "parameters": {
                     "subnetId": {
@@ -203,7 +205,7 @@
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                    "relativePath": "linkedTemplates/virtualMachine/vmdeploy.json"
+                    "uri": "[variables('vmTemplateUri')]"
                 },
                 "parameters": {
                     "vmSize": {
